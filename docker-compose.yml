@@ -1,0 +1,51 @@
+version: "3.7"
+
+services:
+    elasticsearch:
+        image: docker.elastic.co/elasticsearch/elasticsearch:7.2.0
+        restart: always
+        environment:
+            ES_JAVA_OPTS: "-Xmx2G -Xms1G"
+        volumes:
+            # Config
+            - ./elasticsearch/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml
+            - ./elasticsearch/jvm.options:/usr/share/elasticsearch/config/jvm.options
+            # Data
+            - ./elasticsearch/data:/usr/share/elasticsearch/data
+        ports:
+            - 9200:9200
+
+    logstash:
+        image: docker.elastic.co/logstash/logstash:7.2.0
+        restart: always
+        environment:
+            LS_JAVA_OPTS: "-Xmx256m -Xms256m"
+        volumes:
+            - ./logstash/logstash.yml:/usr/share/logstash/config/logstash.yml
+            - ./logstash/pipelines.yml:/usr/share/logstash/config/pipelines.yml
+            - ./logstash/pipelines/local.conf:/usr/share/logstash/local/logstash.conf
+        depends_on:
+            - elasticsearch
+        ports:
+            - 4560:4560
+
+    kibana:
+        image: docker.elastic.co/kibana/kibana:7.2.0
+        restart: always
+        environment:
+            LOGGING_QUIET: 'true'
+        volumes:
+            - ./kibana/kibana.yml:/usr/share/kibana/config/kibana.yml
+        depends_on:
+            - elasticsearch
+        ports:
+            - 5601:5601
+
+    filebeat:
+        image: bargenson/filebeat
+        restart: always
+        volumes:
+         - /var/run/docker.sock:/tmp/docker.sock
+        environment:
+         - LOGSTASH_HOST=192.168.44.44
+         - LOGSTASH_PORT=4560
